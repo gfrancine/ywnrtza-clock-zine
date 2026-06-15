@@ -1,0 +1,29 @@
+{
+  "name": "p5-vite",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "sync-public": "rm -rf public/assets && cp -r ../book/public/assets ./public/assets",
+    "dev": "npm run sync-public && vite --host",
+    "build": "npm run sync-public && tsc && vite build",
+    "preview": "vite preview",
+    "fmt": "prettier -w src public index.html README.md vite.config.js",
+    "no-git": "mv .git hidden/.git",
+    "git": "mv hidden/.git .git",
+    "deploy": "npm run build && rm -rf gl-pages/dist && mv dist gl-pages/dist && cd gl-pages && git add -A && git commit -m 'update' && git push && cd .."
+  },
+  "devDependencies": {
+    "prettier": "^3.8.3",
+    "tomlrun": "^0.1.7",
+    "typescript": "~6.0.2",
+    "vite": "^8.0.4"
+  },
+  "dependencies": {
+    "p5": "^2.2.3",
+    "p5.capture": "^1.6.1",
+    "pdf-lib": "^1.17.1",
+    "qrcode": "^1.5.4",
+    "ywnrtza": "file:../book"
+  }
+}

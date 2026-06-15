@@ -1,0 +1,74 @@
+/* https://gwfh.mranftl.com/fonts/xanh-mono?subsets=latin */
+
+* {
+  /* margin: 0; */
+  /* padding: 0; */
+  box-sizing: border-box;
+}
+
+body {
+  font-family: monospace;
+  min-height: 100vh;
+  margin: 0;
+  overflow: hidden;
+  font-size: 1.5vh;
+  line-height: 1.35;
+}
+
+a {
+  color: inherit;
+}
+
+#app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  height: 100svh;
+  width: 100vw;
+  text-align: center;
+  /* max-width: 70em; */
+  margin: 0 auto;
+  align-items: center;
+  justify-content: center;
+}
+
+#sketch-container {
+  flex: 1;
+  width: 100%;
+}
+
+.p5Canvas {
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  top: 0px;
+  left: 0px;
+}
+
+footer {
+  line-height: 1.2;
+}
+
+.hidden {
+  display: none;
+}
+
+footer button {
+  all: unset;
+  cursor: pointer;
+  text-decoration: underline;
+  /* background: none;
+  color: inherit;
+  border: none;
+  padding: 0;
+  font: inherit;
+  cursor: pointer;
+  outline: inherit; */
+  /* color: inherit;
+  padding: 0;
+  font: inherit; */
+}
+
+/* footer p {
+  margin-top: 0;
+} */

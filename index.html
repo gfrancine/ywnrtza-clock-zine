@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/png" href="/favicon.png" />
+    <link rel="manifest" href="manifest.json" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>YWNRTZA Clock</title>
+  </head>
+  <body>
+    <div id="app">
+      <main id="sketch-container">
+        <p id="loading-text"></p>
+      </main>
+      <footer id="footer">
+        <p>
+          <span id="time-display"></span>
+          <br />
+          <span> Tap anywhere to keep the screen awake! </span>
+          <span
+            >Made by
+            <a target="_blank" href="https://instagram.com/gracefrancines"
+              >@gracefrancines</a
+            ></span
+          >
+
+          <button id="copy-link">Copy clock link</button>
+          <button
+            onclick="document.getElementById('footer').classList.add('hidden')"
+          >
+            Close
+          </button>
+        </p>
+      </footer>
+    </div>
+
+    <div id="print-container"></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
