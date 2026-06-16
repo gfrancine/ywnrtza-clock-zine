@@ -8,6 +8,6 @@ const { default: P5 } = await import("p5");
 // (window as any).p5 = P5;
 // await import("p5.capture"); // dynamic import to avoid hoisting
 
-import sketch from "./sketch";
-// import sketch from "./sketch-zine";
+// import sketch from "./sketch";
+import sketch from "./sketch-zine";
 new P5(sketch);
