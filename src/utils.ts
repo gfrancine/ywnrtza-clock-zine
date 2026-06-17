@@ -42,8 +42,8 @@ export const ptsToMm = (pt: number) => pt / 2.83465;
 // );
 
 function splitIntoLines(str: string) {
-  return str.split("\n")
-    // .map((line) => line.trim());
+  return str.split("\n");
+  // .map((line) => line.trim());
 }
 
 export function getAlignedTextSize(
@@ -97,7 +97,6 @@ export function drawAlignedText(
       return [line, w];
     },
   );
-  console.log(lines)
   const maxLineH = font.heightAtSize(size, { descender: true });
   const totalH = leading * lines.length + Math.max(leading, maxLineH) - leading;
 
