@@ -63,7 +63,10 @@ function sketch(p: P5) {
     loadingText.innerHTML = "";
   };
 
-  // p.deltaTime is unreliable when resizing canvases
+  // p.deltaTime is unreliable when resizing canvases; track our own dt
+  // although update(dt) updates the clock's date, delta time is tracked
+  // independently from the clock's date. the update(dt) method is primarily
+  // for animation.
   let lastT = Date.now();
   p.draw = () => {
     const t = Date.now();
@@ -73,6 +76,9 @@ function sketch(p: P5) {
     p.background(255);
     clock.update(dt);
     clock.draw(0, 0, p.width, p.height);
+    // Still set the most accurate date anyway after every update,
+    // deltaTime can still mess up e.g. when the browser sleeps
+    clock.setDate(new Date());
     timeDisplay.innerHTML = clock.date.toString();
   };
 
