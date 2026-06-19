@@ -16,7 +16,7 @@ It's part of the [_You Will Never Read This Zine Again_](https://gfrancine.gitla
 
 This repo contains the sources for:
 
-1. The public website (starts at `sketch.ts`), which is a Git repository published upstream as a static GitLab Pages website (https://gfrancine.gitlab.io/ywnrtza-clock),
+1. The public website (starts at `sketch.ts`), which is built and published upstream to a separate Git repository as a GitLab Pages website (https://gfrancine.gitlab.io/ywnrtza-clock),
 2. The zine PDF generation (`sketch-zine.ts`), which is meant to be run locally in development.
 
 Switch between both by un/commenting lines in the `main.ts` file:
@@ -80,7 +80,7 @@ git push --set-upstream origin master # initial upstream push
 npm run deploy # build and deploy the site
 ```
 
-Subsequent deployments can simply use `npm run deploy`.
+Subsequent deployments can just use `npm run deploy`.
 
 ## Source-Available?
 
@@ -90,8 +90,8 @@ I still think it would be nice if this zine wasn't a complete black box and anyb
 
 I still try to open-source some tools I made in the process of working on this zine, I suggest looking at them instead!
 
-- [**f-impose**](https://github.com/gfrancine/) is a set of PDF imposition tools for indie printmaking, which I used to impose the generated PDF zine.
+- [**f-impose**](https://github.com/gfrancine/f-impose) is a set of PDF imposition tools for indie printmaking, which is used to impose the generated PDF zines.
 
 # Copyright
 
-(c) Grace Francine (https://gitlab.com/gfrancine)
+(c) 2026 Grace Francine (https://gitlab.com/gfrancine)
