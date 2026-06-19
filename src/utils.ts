@@ -110,6 +110,7 @@ export function drawAlignedText(
       size,
       lineHeight: leading,
       color,
+      font,
     });
   });
 }

@@ -45,6 +45,15 @@ a {
   left: 0px;
 }
 
+#zine-pdf-preview {
+  display: none;
+}
+#zine-pdf-preview.visible {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
 footer {
   line-height: 1.2;
 }
