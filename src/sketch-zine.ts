@@ -36,6 +36,7 @@ async function generateZine(p: P5) {
 
   // PDF Generation
   // --------
+
   console.log("Generating PDF");
   const OUT_W = mmToPts(70),
     OUT_H = mmToPts(200);
@@ -46,14 +47,6 @@ async function generateZine(p: P5) {
   // load pre-designed pages
   // https://github.com/gfrancine/f-impose/blob/master/src/components/App.tsx
   // https://github.com/gfrancine/f-impose/blob/master/src/presets/helpers.ts
-  /*
-  
-  Specs:
-  1. front cover
-  2. 2 clocks
-  [last]. back cover
-  
-  */
   console.log("loading designed pages");
   const designedPdfBuffer = await fetch(DESIGNED_PDF_PATH).then((res) =>
     res.arrayBuffer(),
@@ -106,9 +99,11 @@ async function generateZine(p: P5) {
 }
 
 function sketch(p: P5) {
-  p.setup = async () => {
-    // p.noSmooth();
-  };
+  console.log("press the 'S' key to generate the zine!");
+
+  // p.setup = async () => {
+  //    p.noSmooth();
+  // };
 
   p.keyPressed = async () => {
     if (p.key === "s") await generateZine(p);
