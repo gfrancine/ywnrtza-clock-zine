@@ -4,9 +4,9 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "sync-public": "rm -rf public/assets && cp -r ../book/public/assets ./public/assets",
-    "dev": "npm run sync-public && vite --host",
-    "build": "npm run sync-public && tsc && vite build",
+    "sync-assets": "rm -rf public/assets && cp -r ../book/public/assets ./public/assets",
+    "dev": "npm run sync-assets && vite --host",
+    "build": "npm run sync-assets && tsc && vite build",
     "preview": "vite preview",
     "fmt": "prettier -w src public index.html README.md vite.config.js",
     "no-git": "mv .git hidden/.git",
