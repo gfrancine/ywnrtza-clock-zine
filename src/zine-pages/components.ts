@@ -1,6 +1,6 @@
 import type P5 from "p5";
 import type { PDFPage } from "pdf-lib";
-import type { PageContext, ZineContext } from ".";
+import type { P5ComponentContext, PageContext, ZineContext } from "./types";
 import {
   getFmtDateStrComponents,
   getPdfDrawingHelpers,
@@ -9,12 +9,7 @@ import {
   to3LineDateString,
   type RandomClockResult,
 } from "./helpers";
-import { getMmToPx, mmToPts, ptsToMm, type MmToPx } from "../utils";
-import type {
-  P5Context,
-  PageSketchAssets,
-  PageSketchHooks,
-} from "ywnrtza/src/common/types";
+import { getMmToPx, mmToPts, ptsToMm } from "../utils";
 
 /** a pseudo-justified one line date str (e.g. `Mon 01: 20: 20`) that stretches accross the margin */
 export function oneLineDateStr(ctx: ZineContext, date: Date) {
@@ -77,13 +72,12 @@ export function footer(page: PDFPage, ctx: ZineContext, pageCtx: PageContext) {
   });
 }
 
-export type P5ComponentContext = {
-  pg: P5Context;
-  hooks: PageSketchHooks;
-};
-
 export const DATE_TEXT_SIZE_PTS = 9;
-export const QR_SIZE_MM = 10;
+export const SMALL_QR_SIZE_MM = 10;
+export const getDateTextSizePx = (resolution: number) =>
+  getMmToPx(resolution)(ptsToMm(DATE_TEXT_SIZE_PTS));
+export const getSmallQrSizePx = (resolution: number) =>
+  getMmToPx(resolution)(SMALL_QR_SIZE_MM);
 
 export class ThreeLineDateP5 {
   private p5Ctx: P5ComponentContext;
@@ -91,6 +85,7 @@ export class ThreeLineDateP5 {
   date: Date;
   str: string;
   textSize: number;
+
   constructor(
     p5Ctx: P5ComponentContext,
     ctx: ZineContext,
@@ -101,9 +96,7 @@ export class ThreeLineDateP5 {
     this.date = date;
     this.str = to3LineDateString(date);
     const { resolution } = this.ctx;
-    const mmToPx = getMmToPx(resolution);
-
-    this.textSize = mmToPx(ptsToMm(DATE_TEXT_SIZE_PTS));
+    this.textSize = getDateTextSizePx(resolution);
   }
 
   private applyStyle() {
@@ -150,8 +143,7 @@ export class SmallQrCodeP5 {
     this.ctx = ctx;
     this.qrCodeBlob = qrCodeBlob;
     const { resolution } = this.ctx;
-    const mmToPx = getMmToPx(resolution);
-    this.size = mmToPx(QR_SIZE_MM);
+    this.size = getSmallQrSizePx(resolution);
   }
 
   async setup() {
@@ -173,24 +165,36 @@ export class SmallQrCodeP5 {
 }
 
 /** uses center-origin x */
-export async function threeLineDateWithQr(
+export async function threeLineDateWithQrP5(
   p5Ctx: P5ComponentContext,
   ctx: ZineContext,
-  { x, y, clock }: { x: number; y: number; clock: RandomClockResult },
+  { clock }: { clock: RandomClockResult },
 ) {
   const { date, qrCodeBlob } = clock;
   const dateText = new ThreeLineDateP5(p5Ctx, ctx, { date });
-  dateText.draw(x, y);
-  const GAP = dateText.textSize * 0.5;
+  const gap = dateText.textSize * 0.5;
   const qrCode = await new SmallQrCodeP5(p5Ctx, ctx, { qrCodeBlob }).setup();
-  qrCode.draw(x - qrCode.size / 2, y + dateText.getSize().h + GAP);
+
+  // not in the mood to use classes :')
+
+  const getSize = () => ({
+    w: Math.max(dateText.getSize().w, qrCode.size),
+    h: dateText.getSize().h + gap + qrCode.size,
+  });
+
+  const draw = (x: number, y: number) => {
+    dateText.draw(x, y);
+    qrCode.draw(x - qrCode.size / 2, y + dateText.getSize().h + gap);
+  };
+
+  return { getSize, draw };
 }
 
 /** uses center-origin x */
-export async function threeLineDateWithQrInline(
+export async function threeLineDateWithQrInlineP5(
   p5Ctx: P5ComponentContext,
   ctx: ZineContext,
-  { x, y, clock }: { x: number; y: number; clock: RandomClockResult },
+  { clock }: { clock: RandomClockResult },
 ) {
   const { date, qrCodeBlob } = clock;
 
@@ -200,6 +204,16 @@ export async function threeLineDateWithQrInline(
 
   const GAP = dateText.textSize * 0.5;
   const totalWidth = qrCode.size + dateTextSize.w + GAP;
-  dateText.draw(x - totalWidth / 2 + dateTextSize.w / 2, y);
-  qrCode.draw(x + totalWidth / 2 - qrCode.size, y);
+
+  const getSize = () => ({
+    w: totalWidth,
+    h: Math.max(qrCode.size, dateTextSize.h),
+  });
+
+  const draw = (x: number, y: number) => {
+    dateText.draw(x - totalWidth / 2 + dateTextSize.w / 2, y);
+    qrCode.draw(x + totalWidth / 2 - qrCode.size, y);
+  };
+
+  return { draw, getSize };
 }

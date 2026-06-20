@@ -17,7 +17,7 @@ import {
   randomDate,
   splitIntoLines,
 } from "../utils";
-import type { PageContext, ZineContext } from ".";
+import type { P5ComponentContext, PageContext, ZineContext } from "./types";
 import { footer } from "./components";
 
 // export const MARGINS_MM = {
@@ -258,12 +258,15 @@ export function getPdfDrawingHelpers({
 
 /** DRY helpers for common p5.js-based page operations */
 export function getP5PageHelpers(ctx: ZineContext) {
-  const { outPdf, outW, outH, outWMm, outHMm, resolution, p } = ctx;
+  const { outPdf, outW, outH, outWMm, outHMm, resolution, p, sketchHooks } =
+    ctx;
 
   const setupPage = () => {
     const mmToPx = getMmToPx(resolution);
     const pg = p.createGraphics(mmToPx(outWMm), mmToPx(outHMm));
-    return { pg, mmToPx };
+    // p5-specific context for p5-based components
+    const p5Ctx: P5ComponentContext = { pg, hooks: sketchHooks };
+    return { pg, mmToPx, p5Ctx };
   };
 
   // render the canvas into the PDF and cleans up
@@ -279,4 +282,14 @@ export function getP5PageHelpers(ctx: ZineContext) {
   };
 
   return { setupPage, renderToPage };
+}
+
+export async function getClockP5Image(
+  p5Ctx: P5ComponentContext,
+  clock: RandomClockResult,
+) {
+  const clockImgDataUrl = URL.createObjectURL(clock.clockBlob);
+  const clockImg = await p5Ctx.hooks.loadImage(clockImgDataUrl);
+  URL.revokeObjectURL(clockImgDataUrl);
+  return clockImg;
 }

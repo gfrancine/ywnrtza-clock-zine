@@ -6,49 +6,26 @@ just drawing things on top, some generated from scratch with P5.
 
 */
 
-import { PDFDocument, PDFEmbeddedPage, PDFFont, PDFPage } from "pdf-lib";
-import { canvasToBlob, getMmToPx, mmToPts, ptsToMm } from "../utils";
+import { mmToPts, ptsToMm } from "../utils";
 import {
   randomClock,
   drawAlignedText,
   getAlignedTextSize,
   getPdfDrawingHelpers,
   to2LineDateString,
-  type RandomClockParams,
   to3LineDateString,
   getP5PageHelpers,
+  getClockP5Image,
 } from "./helpers";
 import {
   DATE_TEXT_SIZE_PTS,
   footer,
+  getDateTextSizePx,
   oneLineDateStr,
-  threeLineDateWithQr,
-  threeLineDateWithQrInline,
-  type P5ComponentContext,
+  threeLineDateWithQrP5,
+  threeLineDateWithQrInlineP5,
 } from "./components";
-import type { LeftOrRight, PageSketchHooks } from "ywnrtza/src/common/types";
-import type P5 from "p5";
-import { inToMm } from "ywnrtza/src/common/utils";
-
-export type ZineContext = {
-  outPdf: PDFDocument;
-  outW: number;
-  outH: number;
-  outWMm: number;
-  outHMm: number;
-  resolution: number;
-  designedPages: PDFEmbeddedPage[];
-  clockParams: RandomClockParams;
-  font: PDFFont;
-  p: P5;
-  sketchHooks: PageSketchHooks;
-};
-
-export type PageContext = {
-  page: PDFPage;
-  pageNumber: number;
-  position: LeftOrRight;
-};
+import type { PageContext, ZineContext } from "./types";
 
 /** cover pages + help pages */
 export async function mainPages(ctx: ZineContext) {
@@ -187,17 +164,15 @@ export async function drawBasicClockPageP5(
   ctx: ZineContext,
   pageCtx: PageContext,
 ) {
-  const { clockParams, p, sketchHooks } = ctx;
+  const { clockParams, p } = ctx;
   const { setupPage, renderToPage } = getP5PageHelpers(ctx);
-  const { pg, mmToPx } = setupPage();
+  const { pg, mmToPx, p5Ctx } = setupPage();
   pg.background(255);
-  const p5Ctx: P5ComponentContext = { pg, hooks: sketchHooks };
 
   // clock image
   const clock = await randomClock(clockParams);
-  const clockImgDataUrl = URL.createObjectURL(clock.clockBlob);
-  const clockImg = await p.loadImage(clockImgDataUrl);
-  URL.revokeObjectURL(clockImgDataUrl);
+  const clockImg = await getClockP5Image(p5Ctx, clock);
+
   const clockRect = [
     mmToPx(3), // x
     mmToPx(2), // y
@@ -207,11 +182,8 @@ export async function drawBasicClockPageP5(
   pg.image(clockImg, ...clockRect);
 
   const GAP = mmToPx(ptsToMm(DATE_TEXT_SIZE_PTS)) * 0.8;
-  await threeLineDateWithQrInline(p5Ctx, ctx, {
-    x: pg.width / 2,
-    y: clockRect[1] + clockRect[3] + GAP,
-    clock,
-  });
+  const dateQr = await threeLineDateWithQrP5(p5Ctx, ctx, { clock });
+  dateQr.draw(pg.width / 2, clockRect[1] + clockRect[3] + GAP);
 
   await renderToPage(pageCtx, pg);
 }
@@ -220,7 +192,31 @@ export async function drawDoubleClockPage(
   ctx: ZineContext,
   pageCtx: PageContext,
 ) {
-  //
+  const { clockParams, resolution } = ctx;
+  const { setupPage, renderToPage } = getP5PageHelpers(ctx);
+  const { pg, mmToPx, p5Ctx } = setupPage();
+  pg.background(255);
+
+  let currentY = mmToPx(2);
+
+  for (let i = 0; i < 2; i++) {
+    const clock = await randomClock(clockParams);
+    const clockImg = await getClockP5Image(p5Ctx, clock);
+    const dateQr = await threeLineDateWithQrInlineP5(p5Ctx, ctx, { clock });
+    const gap = getDateTextSizePx(resolution) * 0.3;
+
+    dateQr.draw(pg.width / 2, currentY);
+    currentY += dateQr.getSize().h + gap;
+
+    const clockSize = [
+      pg.width - mmToPx(6), // w
+      pg.height * 0.4, // h
+    ] as const;
+    pg.image(clockImg, mmToPx(3), currentY, ...clockSize);
+    currentY += clockSize[1] + gap;
+  }
+
+  await renderToPage(pageCtx, pg);
 }
 
 export async function drawQuadClockPage(
@@ -228,11 +224,50 @@ export async function drawQuadClockPage(
   pageCtx: PageContext,
 ) {
   //
+  const { clockParams, resolution } = ctx;
+  const { setupPage, renderToPage } = getP5PageHelpers(ctx);
+  const { pg, mmToPx, p5Ctx } = setupPage();
+  pg.background(255);
+
+  let currentY = mmToPx(2);
+
+  for (let i = 0; i < 4; i++) {
+    const clock = await randomClock({ ...clockParams, clockSizeMm: 80 });
+    const clockImg = await getClockP5Image(p5Ctx, clock);
+    const dateQr = await threeLineDateWithQrInlineP5(p5Ctx, ctx, { clock });
+    const gap = getDateTextSizePx(resolution) * 0.3;
+
+    const clockSize = [
+      pg.width * 0.65 - mmToPx(6), // w
+      pg.height * 0.16, // h
+    ] as const;
+
+    const x =
+      pageCtx.position === "left"
+        ? mmToPx(3)
+        : pg.width - clockSize[0] - mmToPx(3);
+
+    dateQr.draw(x + clockSize[0] / 2, currentY);
+    currentY += dateQr.getSize().h + gap;
+
+    pg.image(clockImg, x, currentY, ...clockSize);
+    currentY += clockSize[1] + gap;
+  }
+
+  await renderToPage(pageCtx, pg);
 }
 
 export async function drawClockAsClockPage(
   ctx: ZineContext,
   pageCtx: PageContext,
 ) {
-  //
+  const { clockParams, resolution } = ctx;
+  const { setupPage, renderToPage } = getP5PageHelpers(ctx);
+  const { pg, mmToPx, p5Ctx } = setupPage();
+  pg.background(255);
+
+  const clock = await randomClock(clockParams);
+  const clockImg = await getClockP5Image(p5Ctx, clock);
+
+  await renderToPage(pageCtx, pg);
 }
