@@ -7,7 +7,13 @@ just drawing things on top, some generated from scratch with P5.
 */
 
 import { PDFDocument, PDFEmbeddedPage, PDFFont, PDFPage } from "pdf-lib";
-import { drawAlignedText, getAlignedTextSize, mmToPts } from "../utils";
+import {
+  canvasToBlob,
+  drawAlignedText,
+  getAlignedTextSize,
+  mmToPts,
+  ptsToMm,
+} from "../utils";
 import {
   randomClock,
   getPdfDrawingHelpers,
@@ -16,15 +22,22 @@ import {
   to3LineDateString,
 } from "./helpers";
 import { footer, oneLineDateStr } from "./components";
-import type { LeftOrRight } from "ywnrtza/src/common/types";
+import type { LeftOrRight, PageSketchHooks } from "ywnrtza/src/common/types";
+import type P5 from "p5";
+import { inToMm } from "ywnrtza/src/common/utils";
 
 export type ZineContext = {
   outPdf: PDFDocument;
   outW: number;
   outH: number;
+  outWMm: number;
+  outHMm: number;
+  resolution: number;
   designedPages: PDFEmbeddedPage[];
   clockParams: RandomClockParams;
   font: PDFFont;
+  p: P5;
+  sketchHooks: PageSketchHooks;
 };
 
 export type PageContext = {
@@ -125,13 +138,12 @@ export async function drawEssayPage(ctx: ZineContext) {
   drawImageMm(page, clockImage, 3, 7.5, 64, 45);
 }
 
-export async function drawSimpleClockPage(
+export async function drawBasicClockPage(
   ctx: ZineContext,
   pageCtx: PageContext,
 ) {
-  const { outPdf, outW, outH, designedPages, clockParams, font } = ctx;
-  const { fullPageRect, whiteRectMm, fromTop, drawImageMm } =
-    getPdfDrawingHelpers({ outW, outH });
+  const { outPdf, outW, outH, clockParams, font } = ctx;
+  const { fromTop, drawImageMm } = getPdfDrawingHelpers({ outW, outH });
 
   const clock = await randomClock(clockParams);
   const clockImage = await outPdf.embedPng(await clock.clockBlob.arrayBuffer());
@@ -168,8 +180,74 @@ export async function drawSimpleClockPage(
   footer(page, ctx, pageCtx);
 }
 
-export async function drawSampleP5Page(ctx: ZineContext, pageCtx: PageContext) {
-  const { outPdf, outW, outH, designedPages, clockParams, font } = ctx;
-  const { fullPageRect, whiteRectMm, fromTop, drawImageMm } =
-    getPdfDrawingHelpers({ outW, outH });
+/** a demo of the basic clock page drawn in P5 */
+export async function drawBasicClockPageP5(ctx: ZineContext, pageCtx: PageContext) {
+  const {
+    outPdf,
+    outW,
+    outH,
+    outHMm,
+    outWMm,
+    resolution,
+    clockParams,
+    p,
+    sketchHooks,
+  } = ctx;
+  const clock = await randomClock(clockParams);
+  const mmToPx = (mm: number) => mm * inToMm(resolution);
+
+  const pg = p.createGraphics(mmToPx(outWMm), mmToPx(outHMm));
+  pg.background(255);
+
+  // clock image
+  const clockImgDataUrl = URL.createObjectURL(clock.clockBlob);
+  const clockImg = await p.loadImage(clockImgDataUrl);
+  URL.revokeObjectURL(clockImgDataUrl);
+  const clockRect = [
+    mmToPx(3), // x
+    mmToPx(2), // y
+    pg.width - mmToPx(6), // w
+    pg.height / 2 - mmToPx(2), // h
+  ] as const;
+  pg.image(clockImg, ...clockRect);
+
+  // text str
+  const str = to3LineDateString(clock.date);
+  const textSize = mmToPx(ptsToMm(9));
+  pg.textFont(sketchHooks.fonts.geistPixelSquare);
+  pg.textSize(textSize);
+  pg.textLeading(textSize);
+  pg.textAlign("center", "top");
+  const textBounds = pg.textBounds(str, 0, 0);
+  const textPos = [
+    pg.width / 2,
+    clockRect[1] + clockRect[3] + textSize,
+  ] as const;
+  pg.fill(0);
+  pg.text(str, ...textPos);
+
+  // Qr code
+  const GAP = textSize * 0.5; // gap between text box and QR
+  const qrImgDataUrl = URL.createObjectURL(clock.qrCodeBlob);
+  const qrImg = await p.loadImage(qrImgDataUrl);
+  URL.revokeObjectURL(qrImgDataUrl);
+  const QR_SIZE = mmToPx(10);
+  pg.image(
+    qrImg,
+    pg.width / 2 - QR_SIZE / 2,
+    textPos[1] + textBounds.h + GAP,
+    QR_SIZE,
+    QR_SIZE,
+  );
+
+  // render the canvas into the PDF
+  const page = outPdf.addPage([outW, outH]);
+  const renderedPage = await canvasToBlob(pg.elt).then((blob) =>
+    blob.arrayBuffer(),
+  );
+  const renderedPageImg = await outPdf.embedPng(renderedPage);
+  page.drawImage(renderedPageImg, { x: 0, y: 0, width: outW, height: outH });
+  footer(page, ctx, pageCtx);
+
+  pg.remove();
 }

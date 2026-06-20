@@ -17,6 +17,7 @@ export type RandomClockParams = {
   hooks: PageSketchHooks;
   baseUrl: string;
   clockSizeMm: number;
+  resolution: number; // ppi;
   baseDate?: Date;
   clockPreset?: Partial<ClockPreset>;
 };
@@ -26,6 +27,7 @@ export async function randomClock({
   hooks,
   baseUrl,
   clockSizeMm,
+  resolution,
   clockPreset,
   baseDate,
 }: RandomClockParams) {
@@ -33,8 +35,8 @@ export async function randomClock({
   baseDate = baseDate || randomDate();
 
   // clock
-  const width = inToMm(300) * clockSizeMm, // size mm * 300ppi
-    height = inToMm(300) * clockSizeMm;
+  const width = inToMm(resolution) * clockSizeMm, // size mm * 300ppi
+    height = inToMm(resolution) * clockSizeMm;
   const pg = p.createGraphics(width, height);
   pg.noSmooth();
   pg.background(255);
@@ -46,6 +48,7 @@ export async function randomClock({
   await clock.setup();
   clock.draw(0, 0, width, height);
   const clockBlob = await canvasToBlob(pg.elt);
+  pg.remove();
 
   // qrcode
   const url = clockPresetToUrl(preset, baseUrl);

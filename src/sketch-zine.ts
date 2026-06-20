@@ -12,7 +12,8 @@ import fontkit from "@pdf-lib/fontkit";
 import { mmToPts } from "./utils";
 import {
   drawEssayPage,
-  drawSimpleClockPage,
+  drawBasicClockPage,
+  drawBasicClockPageP5,
   mainPages,
   type ZineContext,
 } from "./zine-pages";
@@ -20,7 +21,12 @@ import {
 // main
 
 async function generateZine(p: P5) {
+  const OUT_W_MM = 70,
+    OUT_H_MM = 200,
+    OUT_W = mmToPts(OUT_W_MM),
+    OUT_H = mmToPts(OUT_H_MM);
   const CLOCK_SIZE_MM = 150;
+  const RESOLUTION = 300;
   const BASE_URL = "https://gfrancine.gitlab.io/ywnrtza-clock";
   const DESIGNED_PDF_PATH = "clock-assets/designedpages.pdf";
   const FONT_PATH = "assets/fonts/GeistPixel-Square.otf";
@@ -43,9 +49,6 @@ async function generateZine(p: P5) {
   // --------
 
   console.log("Generating PDF");
-  const OUT_W = mmToPts(70),
-    OUT_H = mmToPts(200);
-
   const outPdf = await PDFDocument.create();
   outPdf.registerFontkit(fontkit);
 
@@ -67,9 +70,20 @@ async function generateZine(p: P5) {
     outPdf,
     outW: OUT_W,
     outH: OUT_H,
+    outWMm: OUT_W_MM,
+    outHMm: OUT_H_MM,
+    resolution: RESOLUTION,
     designedPages,
-    clockParams: { p, hooks, baseUrl: BASE_URL, clockSizeMm: CLOCK_SIZE_MM },
+    clockParams: {
+      p,
+      hooks,
+      baseUrl: BASE_URL,
+      clockSizeMm: CLOCK_SIZE_MM,
+      resolution: RESOLUTION,
+    },
     font,
+    p,
+    sketchHooks: hooks,
   };
 
   // page generation
@@ -89,7 +103,8 @@ async function generateZine(p: P5) {
 
   for (let i = 0; i < 6; i++) {
     console.log("generating page " + pageNumber);
-    await drawSimpleClockPage(zineCtx, getPageCtx());
+    // await drawSimpleClockPage(zineCtx, getPageCtx());
+    await drawBasicClockPageP5(zineCtx, getPageCtx());
     // ... TODO
     pageNumber++;
   }
@@ -105,7 +120,7 @@ async function generateZine(p: P5) {
 
   for (let i = 0; i < 6 - 1; i++) {
     console.log("generating page " + pageNumber);
-    await drawSimpleClockPage(zineCtx, getPageCtx());
+    await drawBasicClockPage(zineCtx, getPageCtx());
     // ... TODO
     pageNumber++;
   }
