@@ -10,9 +10,9 @@ import { inToMm } from "ywnrtza/src/common/utils";
 import { clockPresetToUrl } from "../url";
 import { qrcanvas } from "qrcanvas";
 import { cmyk, PDFImage, PDFPage } from "pdf-lib";
-import { canvasToBuffer, mmToPts, randomDate } from "../utils";
+import { canvasToBlob, mmToPts, randomDate } from "../utils";
 
-export type GenerateClockParams = {
+export type RandomClockParams = {
   p: P5;
   hooks: PageSketchHooks;
   baseUrl: string;
@@ -21,14 +21,14 @@ export type GenerateClockParams = {
   clockPreset?: Partial<ClockPreset>;
 };
 
-export async function generateClock({
+export async function randomClock({
   p,
   hooks,
   baseUrl,
   clockSizeMm,
   clockPreset,
   baseDate,
-}: GenerateClockParams) {
+}: RandomClockParams) {
   const preset = { ...randomClockPreset(), ...clockPreset };
   baseDate = baseDate || randomDate();
 
@@ -45,17 +45,17 @@ export async function generateClock({
   });
   await clock.setup();
   clock.draw(0, 0, width, height);
-  const clockBuffer = await canvasToBuffer(pg.elt);
+  const clockBlob = await canvasToBlob(pg.elt);
 
   // qrcode
   const url = clockPresetToUrl(preset, baseUrl);
   const qrCodeCanvas: HTMLCanvasElement = qrcanvas({ data: url });
-  const qrCodeBuffer = await canvasToBuffer(qrCodeCanvas);
+  const qrCodeBlob = await canvasToBlob(qrCodeCanvas);
 
   return {
     date: baseDate,
-    qrCodeBuffer,
-    clockBuffer,
+    clockBlob,
+    qrCodeBlob,
   };
 }
 

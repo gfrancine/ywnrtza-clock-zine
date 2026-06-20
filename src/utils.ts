@@ -5,13 +5,12 @@ export function randomDate(start: Date = new Date(0), end: Date = new Date()) {
   return new Date(randomInRangeInt(start.getTime(), end.getTime()));
 }
 
-export function canvasToBuffer(
-  canvas: HTMLCanvasElement,
-): Promise<ArrayBuffer> {
+export function canvasToBlob(canvas: HTMLCanvasElement): Promise<Blob> {
   return new Promise((resolve, reject) => {
     canvas.toBlob((blob) => {
       if (!blob) reject("no blob");
-      blob?.arrayBuffer().then((buffer) => resolve(buffer));
+      else resolve(blob);
+      // blob?.arrayBuffer().then((buffer) => resolve(buffer));
     });
   });
 }

@@ -1,7 +1,7 @@
 /*
 
 PDF page presets for the zine -- some just drawing a pre-designed page 
-(see clock-assets/designedpages.pdf), some basing off them closes and 
+(see clock-assets/designedpages.pdf), some basing off them closely and 
 just drawing things on top, some generated from scratch with P5.
 
 */
@@ -9,10 +9,10 @@ just drawing things on top, some generated from scratch with P5.
 import { PDFDocument, PDFEmbeddedPage, PDFFont, PDFPage } from "pdf-lib";
 import { drawAlignedText, getAlignedTextSize, mmToPts } from "../utils";
 import {
-  generateClock,
+  randomClock,
   getPdfDrawingHelpers,
   to2LineDateString,
-  type GenerateClockParams,
+  type RandomClockParams,
 } from "./helpers";
 import { oneLineDateStr } from "./components";
 
@@ -21,7 +21,7 @@ export type PageContext = {
   outW: number;
   outH: number;
   designedPages: PDFEmbeddedPage[];
-  clockParams: GenerateClockParams;
+  clockParams: RandomClockParams;
   font: PDFFont;
 };
 
@@ -32,7 +32,7 @@ export async function mainPages(ctx: PageContext) {
     getPdfDrawingHelpers({ outW, outH });
 
   const baseDate = new Date(); // set to today
-  const clock = await generateClock({
+  const clock = await randomClock({
     ...clockParams,
     clockSizeMm: 100,
     clockPreset: {
@@ -41,8 +41,8 @@ export async function mainPages(ctx: PageContext) {
     },
     baseDate,
   });
-  const clockImage = await outPdf.embedPng(clock.clockBuffer);
-  const qrImage = await outPdf.embedPng(clock.qrCodeBuffer);
+  const clockImage = await outPdf.embedPng(await clock.clockBlob.arrayBuffer());
+  const qrImage = await outPdf.embedPng(await clock.qrCodeBlob.arrayBuffer());
 
   // covers
 
@@ -102,11 +102,11 @@ export async function drawEssayPage(ctx: PageContext) {
   const { outPdf, outW, outH, designedPages, clockParams } = ctx;
   const { drawImageMm, whiteRectMm } = getPdfDrawingHelpers({ outW, outH });
 
-  const clock = await generateClock({
+  const clock = await randomClock({
     ...clockParams,
     clockSizeMm: 100,
   });
-  const clockImage = await outPdf.embedPng(clock.clockBuffer);
+  const clockImage = await outPdf.embedPng(await clock.clockBlob.arrayBuffer());
 
   const page = outPdf.addPage([outW, outH]);
   page.drawPage(designedPages[4]);
