@@ -7,7 +7,7 @@ import {
 } from "ywnrtza/src/common/assets";
 import { loadRawTexts, wrapText } from "ywnrtza/src/text";
 import { getColors } from "ywnrtza/src/common/colors";
-import { PDFDocument } from "pdf-lib";
+import { PDFDocument, PDFPage } from "pdf-lib";
 import fontkit from "@pdf-lib/fontkit";
 import { mmToPts } from "./utils";
 import {
@@ -88,44 +88,53 @@ async function generateZine(p: P5) {
 
   // page generation
   console.log("generating pages");
+  const startTime = performance.now();
+  const drawPromises = []; // generate pages in parallel
 
   let pageNumber = 1;
-  const getPageCtx = () => ({
-    pageNumber,
+  const addPage = () => outPdf.addPage([OUT_W, OUT_H]);
+
+  /** creates a page context with a new page */
+  const newPageCtx = () => ({
+    page: addPage(),
+    pageNumber, // increment manually
     position: pageNumber % 2 === 0 ? "right" : ("left" as LeftOrRight),
   });
+
+  const drawClockPages = (length: number) => {
+    for (let i = 0; i < length; i++) {
+      console.log("generating page " + pageNumber);
+      const pageCtx = newPageCtx();
+      drawPromises.push(drawBasicClockPageP5(zineCtx, pageCtx));
+      pageNumber++;
+    }
+  };
 
   const { drawFrontCover, drawBackCover, drawHelpPage1, drawHelpPage2 } =
     await mainPages(zineCtx);
 
   // add pages, part 1
-  await drawFrontCover();
-
-  for (let i = 0; i < 6; i++) {
-    console.log("generating page " + pageNumber);
-    // await drawSimpleClockPage(zineCtx, getPageCtx());
-    await drawBasicClockPageP5(zineCtx, getPageCtx());
-    // ... TODO
-    pageNumber++;
-  }
+  console.log("drawing front cover");
+  drawPromises.push(drawFrontCover(newPageCtx()));
+  drawClockPages(6);
 
   // middle: instruction help pages
-  await drawHelpPage1();
-  await drawHelpPage2();
+  console.log("drawing instruction pages");
+  drawPromises.push(drawHelpPage1(newPageCtx()), drawHelpPage2(newPageCtx()));
   pageNumber += 2;
 
   // add pages, part 2
-  await drawEssayPage(zineCtx);
+  drawPromises.push(drawEssayPage(zineCtx, newPageCtx()));
   pageNumber++;
 
-  for (let i = 0; i < 6 - 1; i++) {
-    console.log("generating page " + pageNumber);
-    await drawBasicClockPage(zineCtx, getPageCtx());
-    // ... TODO
-    pageNumber++;
-  }
+  drawClockPages(6 - 1);
+  console.log("drawing back cover");
+  drawPromises.push(drawBackCover(newPageCtx()));
 
-  await drawBackCover();
+  await Promise.all(drawPromises);
+  console.log(
+    `page generation done! took took ${Math.round(performance.now() - startTime)}ms`,
+  );
 
   // save PDF
   // https://github.com/gfrancine/f-impose/blob/master/src/utils.ts
@@ -137,7 +146,7 @@ async function generateZine(p: P5) {
   const outPdfUrl = URL.createObjectURL(outPdfBlob);
   // await downloadFileFromUrl(outPdfUrl, "output.pdf");
   previewFrame.src = outPdfUrl;
-  console.log("done!");
+  console.log(`done! took ${Math.round(performance.now() - startTime)}ms`);
 }
 
 function sketch(p: P5) {

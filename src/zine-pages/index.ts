@@ -41,6 +41,7 @@ export type ZineContext = {
 };
 
 export type PageContext = {
+  page: PDFPage;
   pageNumber: number;
   position: LeftOrRight;
 };
@@ -66,10 +67,8 @@ export async function mainPages(ctx: ZineContext) {
 
   // covers
 
-  const drawFrontCover = () => {
-    // const coverPage = (await outPdf.copyPages(designedPdf, [0]))[0];
-    // outPdf.addPage(coverPage);
-    const page = outPdf.addPage([outW, outH]);
+  const drawFrontCover = (pageCtx: PageContext) => {
+    const { page } = pageCtx;
     page.drawPage(designedPages[0], fullPageRect);
 
     drawImageMm(page, clockImage, 3, 26.5, 63.5, 77);
@@ -91,8 +90,8 @@ export async function mainPages(ctx: ZineContext) {
     });
   };
 
-  const drawBackCover = () => {
-    const page = outPdf.addPage([outW, outH]);
+  const drawBackCover = (pageCtx: PageContext) => {
+    const { page } = pageCtx;
     page.drawPage(designedPages[1], fullPageRect);
     drawImageMm(page, clockImage, 3, 66, 64, 20);
   };
@@ -101,15 +100,15 @@ export async function mainPages(ctx: ZineContext) {
 
   const drawOneLineDateText = oneLineDateStr(ctx, baseDate);
 
-  const drawHelpPage1 = () => {
-    const page = outPdf.addPage([outW, outH]);
+  const drawHelpPage1 = (pageCtx: PageContext) => {
+    const { page } = pageCtx;
     page.drawPage(designedPages[2], fullPageRect);
     whiteRectMm(page, 3, 20.7, 64, 3.15);
     drawOneLineDateText(page, 20.7);
   };
 
-  const drawHelpPage2 = () => {
-    const page = outPdf.addPage([outW, outH]);
+  const drawHelpPage2 = (pageCtx: PageContext) => {
+    const { page } = pageCtx;
     page.drawPage(designedPages[3], fullPageRect);
     whiteRectMm(page, 3, 144.5, 64, 3.15);
     drawOneLineDateText(page, 144.5);
@@ -118,9 +117,10 @@ export async function mainPages(ctx: ZineContext) {
   return { drawFrontCover, drawBackCover, drawHelpPage1, drawHelpPage2 };
 }
 
-export async function drawEssayPage(ctx: ZineContext) {
+export async function drawEssayPage(ctx: ZineContext, pageCtx: PageContext) {
   const { outPdf, outW, outH, designedPages, clockParams } = ctx;
   const { drawImageMm, whiteRectMm } = getPdfDrawingHelpers({ outW, outH });
+  const { page } = pageCtx;
 
   const clock = await randomClock({
     ...clockParams,
@@ -128,7 +128,6 @@ export async function drawEssayPage(ctx: ZineContext) {
   });
   const clockImage = await outPdf.embedPng(await clock.clockBlob.arrayBuffer());
 
-  const page = outPdf.addPage([outW, outH]);
   page.drawPage(designedPages[4]);
 
   whiteRectMm(page, 3, 2, 64, 3.15);
@@ -144,12 +143,11 @@ export async function drawBasicClockPage(
 ) {
   const { outPdf, outW, outH, clockParams, font } = ctx;
   const { fromTop, drawImageMm } = getPdfDrawingHelpers({ outW, outH });
+  const { page } = pageCtx;
 
   const clock = await randomClock(clockParams);
   const clockImage = await outPdf.embedPng(await clock.clockBlob.arrayBuffer());
   const qrImage = await outPdf.embedPng(await clock.qrCodeBlob.arrayBuffer());
-
-  const page = outPdf.addPage([outW, outH]);
 
   // clock
   page.drawImage(clockImage, {
@@ -181,7 +179,10 @@ export async function drawBasicClockPage(
 }
 
 /** a demo of the basic clock page drawn in P5 */
-export async function drawBasicClockPageP5(ctx: ZineContext, pageCtx: PageContext) {
+export async function drawBasicClockPageP5(
+  ctx: ZineContext,
+  pageCtx: PageContext,
+) {
   const {
     outPdf,
     outW,
@@ -241,7 +242,7 @@ export async function drawBasicClockPageP5(ctx: ZineContext, pageCtx: PageContex
   );
 
   // render the canvas into the PDF
-  const page = outPdf.addPage([outW, outH]);
+  const { page } = pageCtx;
   const renderedPage = await canvasToBlob(pg.elt).then((blob) =>
     blob.arrayBuffer(),
   );
