@@ -86,7 +86,7 @@ export function getFmtDateStrComponents(date: Date) {
     y: date.getFullYear(),
     hour: pad2(date.getHours()),
     min: pad2(date.getMinutes()),
-    sec: pad2(date.getMinutes()),
+    sec: pad2(date.getSeconds()),
   };
 }
 
@@ -99,7 +99,7 @@ export function getFmtDateStrComponents(date: Date) {
  */
 export function to3LineDateString(date: Date) {
   const { day, d, m3, y, hour, min, sec } = getFmtDateStrComponents(date);
-  return `${day}\n${d} ${m3} ${y}\n${hour}${min}:${sec}`;
+  return `${day}\n${d} ${m3} ${y}\n${hour}:${min}:${sec}`;
 }
 
 /**
