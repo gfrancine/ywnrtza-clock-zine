@@ -105,6 +105,7 @@ export function getFmtDateStrComponents(date: Date) {
     m,
     m3: m.slice(0, 3),
     y: date.getFullYear(),
+    y2: date.getFullYear().toString().slice(0, 2),
     hour: pad2(date.getHours()),
     min: pad2(date.getMinutes()),
     sec: pad2(date.getSeconds()),

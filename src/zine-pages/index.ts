@@ -16,6 +16,7 @@ import {
   to3LineDateString,
   getP5PageHelpers,
   getClockP5Image,
+  getFmtDateStrComponents,
 } from "./helpers";
 import {
   DATE_TEXT_SIZE_PTS,
@@ -24,8 +25,11 @@ import {
   oneLineDateStr,
   threeLineDateWithQrP5,
   threeLineDateWithQrInlineP5,
+  ThreeLineDateP5,
+  SmallQrCodeP5,
 } from "./components";
 import type { PageContext, ZineContext } from "./types";
+import type { Callback } from "ywnrtza/src/common/types";
 
 /** cover pages + help pages */
 export async function mainPages(ctx: ZineContext) {
@@ -261,13 +265,90 @@ export async function drawClockAsClockPage(
   ctx: ZineContext,
   pageCtx: PageContext,
 ) {
-  const { clockParams, resolution } = ctx;
+  const { clockParams, sketchHooks } = ctx;
   const { setupPage, renderToPage } = getP5PageHelpers(ctx);
   const { pg, mmToPx, p5Ctx } = setupPage();
   pg.background(255);
 
   const clock = await randomClock(clockParams);
   const clockImg = await getClockP5Image(p5Ctx, clock);
+  // const smallQr = await new SmallQrCodeP5(p5Ctx, ctx, {
+  //   qrCodeBlob: clock.qrCodeBlob,
+  // }).setup();
+
+  const clockSize = [
+    pg.width * 0.75, // w
+    pg.height * 0.8, // h
+  ] as const;
+
+  pg.translate(mmToPx(70) / 2 - clockSize[0] / 2, mmToPx(2));
+
+  // hour 'ticks'
+  const RADIUS_SCALE = 1;
+
+  for (let i = 0; i < 12; i++) {
+    const hour = i === 0 ? 12 : i;
+    const theta = (hour / 12) * (Math.PI * 2);
+    const x =
+        clockSize[0] / 2 +
+        Math.sin(theta) * ((clockSize[0] / 2) * RADIUS_SCALE),
+      y =
+        clockSize[1] / 2 -
+        Math.cos(theta) * ((clockSize[1] / 2) * RADIUS_SCALE);
+
+    // if (hour === 6) {
+    //   smallQr.draw(x-smallQr.size/2,y);
+    //   continue;
+    // }
+
+    const {
+      day3,
+      d,
+      m3,
+      y2,
+      hour: hr,
+      min,
+      sec,
+    } = getFmtDateStrComponents(clock.date);
+    const textStr = `${day3}\n${d} ${m3} ${y2}\n${hr}:${min}:${sec}`;
+    pg.textFont(sketchHooks.fonts.geistPixelSquare);
+    const textSize = mmToPx(ptsToMm(7));
+    pg.textSize(textSize);
+    pg.textLeading(textSize);
+    pg.textAlign("center", "top");
+    pg.text(textStr, x, y);
+  }
+
+  // hands
+  // start working with a single size and stretch instead
+  pg.push();
+  pg.scale(1, clockSize[1] / clockSize[0]);
+  const clockRadius = clockSize[0] / 2;
+  const handWidth = clockRadius * 0.16;
+  const seconds = clock.date.getSeconds(),
+    minutes = clock.date.getMinutes(),
+    hours = clock.date.getHours();
+
+  const drawHandTransformed = (progress: number, drawHand: Callback) => {
+    pg.push();
+    pg.blendMode("multiply");
+    pg.translate(clockRadius, clockRadius);
+    pg.rotate(progress * Math.PI * 2 - Math.PI);
+    pg.translate(-handWidth / 2, 0);
+    drawHand();
+    pg.pop();
+  };
+
+  drawHandTransformed(minutes / 60 + (seconds / 60) * (1 / 60), () => {
+    const handLength = clockRadius * 1.1;
+    pg.image(clockImg, 0, 0, handWidth, handLength);
+  });
+
+  drawHandTransformed((hours % 12) / 12 + (minutes / 60) * (1 / 12), () => {
+    const handLength = clockRadius * 0.8;
+    pg.image(clockImg, 0, 0, handWidth, handLength);
+  });
+  pg.pop();
 
   await renderToPage(pageCtx, pg);
 }

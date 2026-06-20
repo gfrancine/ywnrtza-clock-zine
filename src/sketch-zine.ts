@@ -5,9 +5,9 @@ import {
   loadCommonFonts,
   loadCommonImages,
 } from "ywnrtza/src/common/assets";
-import { loadRawTexts, wrapText } from "ywnrtza/src/text";
+import { loadRawTexts } from "ywnrtza/src/text";
 import { getColors } from "ywnrtza/src/common/colors";
-import { PDFDocument, PDFPage } from "pdf-lib";
+import { PDFDocument } from "pdf-lib";
 import fontkit from "@pdf-lib/fontkit";
 import { mmToPts } from "./utils";
 import {
@@ -16,6 +16,7 @@ import {
   mainPages,
   drawDoubleClockPage,
   drawQuadClockPage,
+  drawClockAsClockPage,
 } from "./zine-pages";
 import type { PageContext, ZineContext } from "./zine-pages/types";
 import { assert, randomFromArray } from "ywnrtza/src/common/utils";
@@ -33,7 +34,7 @@ async function previewPageDevelopment(zineCtx: ZineContext) {
     position: "left",
   };
 
-  await drawQuadClockPage(zineCtx, pageCtx);
+  await drawClockAsClockPage(zineCtx, pageCtx);
 
   console.log(`done! took ${Math.round(performance.now() - startTime)}ms`);
 }
@@ -55,7 +56,7 @@ async function generatePages(zineCtx: ZineContext) {
     position: pageNumber % 2 === 0 ? "right" : ("left" as LeftOrRight),
   });
 
-  const N_CLOCK_PAGES = 16 - 4; // -4 help pages + covers
+  const N_CLOCK_PAGES = 24 - 4; // -4 help pages + covers
   assert(N_CLOCK_PAGES % 2 === 0, "number of clock pages must be even");
 
   const drawClockPages = (length: number) => {
@@ -67,6 +68,7 @@ async function generatePages(zineCtx: ZineContext) {
         () => drawBasicClockPageP5(zineCtx, pageCtx),
         () => drawDoubleClockPage(zineCtx, pageCtx),
         () => drawQuadClockPage(zineCtx, pageCtx),
+        () => drawClockAsClockPage(zineCtx, pageCtx),
       ];
       const preset = randomFromArray(presets);
 
