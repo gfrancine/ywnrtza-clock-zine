@@ -9,8 +9,23 @@ import {
 import { inToMm } from "ywnrtza/src/common/utils";
 import { clockPresetToUrl } from "../url";
 import { qrcanvas } from "qrcanvas";
-import { cmyk, PDFImage, PDFPage } from "pdf-lib";
-import { canvasToBlob, mmToPts, randomDate } from "../utils";
+import { cmyk, PDFFont, PDFImage, PDFPage, type Color } from "pdf-lib";
+import {
+  canvasToBlob,
+  getMmToPx,
+  mmToPts,
+  randomDate,
+  splitIntoLines,
+} from "../utils";
+import type { PageContext, ZineContext } from ".";
+import { footer } from "./components";
+
+// export const MARGINS_MM = {
+//   t: 2,
+//   b: 2,
+//   i: 3,
+//   o: 3,
+// }
 
 export type RandomClockParams = {
   p: P5;
@@ -22,6 +37,12 @@ export type RandomClockParams = {
   clockPreset?: Partial<ClockPreset>;
 };
 
+export type RandomClockResult = {
+  date: Date;
+  clockBlob: Blob;
+  qrCodeBlob: Blob;
+};
+
 export async function randomClock({
   p,
   hooks,
@@ -30,7 +51,7 @@ export async function randomClock({
   resolution,
   clockPreset,
   baseDate,
-}: RandomClockParams) {
+}: RandomClockParams): Promise<RandomClockResult> {
   const preset = { ...randomClockPreset(), ...clockPreset };
   baseDate = baseDate || randomDate();
 
@@ -113,6 +134,75 @@ export function to2LineDateString(date: Date) {
   return `${day} ${d} ${m3} ${y}\n${hour}:${min}:${sec}`;
 }
 
+export function getAlignedTextSize(
+  str: string,
+  {
+    font,
+    size,
+    leading = size,
+  }: {
+    font: PDFFont;
+    size: number;
+    leading?: number;
+  },
+) {
+  let maxW = 0;
+  const lines = splitIntoLines(str);
+  lines.forEach((line) => {
+    const w = font.widthOfTextAtSize(line, size);
+    if (w > maxW) maxW = w;
+    return [line, w];
+  });
+  const maxLineH = font.heightAtSize(size, { descender: true });
+  const totalH = leading * lines.length + Math.max(leading, maxLineH) - leading;
+  return { w: maxW, h: totalH };
+}
+
+export function drawAlignedText(
+  page: PDFPage,
+  str: string,
+  {
+    font,
+    size,
+    leading = size,
+    align = "left",
+    x = 0,
+    y = 0,
+    color,
+  }: {
+    align: "left" | "center" | "right";
+    font: PDFFont;
+    size: number;
+    leading?: number;
+    x: number;
+    y: number;
+    color?: Color;
+  },
+) {
+  const lines: [line: string, width: number][] = splitIntoLines(str).map(
+    (line) => {
+      const w = font.widthOfTextAtSize(line, size);
+      return [line, w];
+    },
+  );
+  const maxLineH = font.heightAtSize(size, { descender: true });
+  const totalH = leading * lines.length + Math.max(leading, maxLineH) - leading;
+
+  lines.forEach(([line, width], i) => {
+    const lineX =
+      align === "left" ? x : align === "center" ? x - width / 2 : x - width;
+
+    page.drawText(line, {
+      x: lineX,
+      y: y + totalH - (i + 1) * leading,
+      size,
+      lineHeight: leading,
+      color,
+      font,
+    });
+  });
+}
+
 export function getPdfDrawingHelpers({
   outW,
   outH,
@@ -164,4 +254,29 @@ export function getPdfDrawingHelpers({
     whiteRectMm,
     drawImageMm,
   };
+}
+
+/** DRY helpers for common p5.js-based page operations */
+export function getP5PageHelpers(ctx: ZineContext) {
+  const { outPdf, outW, outH, outWMm, outHMm, resolution, p } = ctx;
+
+  const setupPage = () => {
+    const mmToPx = getMmToPx(resolution);
+    const pg = p.createGraphics(mmToPx(outWMm), mmToPx(outHMm));
+    return { pg, mmToPx };
+  };
+
+  // render the canvas into the PDF and cleans up
+  const renderToPage = async (pageCtx: PageContext, pg: P5.Graphics) => {
+    const { page } = pageCtx;
+    const renderedPage = await canvasToBlob(pg.elt).then((blob) =>
+      blob.arrayBuffer(),
+    );
+    const renderedPageImg = await outPdf.embedPng(renderedPage);
+    page.drawImage(renderedPageImg, { x: 0, y: 0, width: outW, height: outH });
+    pg.remove();
+    footer(page, ctx, pageCtx); // omit?
+  };
+
+  return { setupPage, renderToPage };
 }

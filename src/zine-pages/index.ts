@@ -7,21 +7,25 @@ just drawing things on top, some generated from scratch with P5.
 */
 
 import { PDFDocument, PDFEmbeddedPage, PDFFont, PDFPage } from "pdf-lib";
-import {
-  canvasToBlob,
-  drawAlignedText,
-  getAlignedTextSize,
-  mmToPts,
-  ptsToMm,
-} from "../utils";
+import { canvasToBlob, getMmToPx, mmToPts, ptsToMm } from "../utils";
 import {
   randomClock,
+  drawAlignedText,
+  getAlignedTextSize,
   getPdfDrawingHelpers,
   to2LineDateString,
   type RandomClockParams,
   to3LineDateString,
+  getP5PageHelpers,
 } from "./helpers";
-import { footer, oneLineDateStr } from "./components";
+import {
+  DATE_TEXT_SIZE_PTS,
+  footer,
+  oneLineDateStr,
+  threeLineDateWithQr,
+  threeLineDateWithQrInline,
+  type P5ComponentContext,
+} from "./components";
 import type { LeftOrRight, PageSketchHooks } from "ywnrtza/src/common/types";
 import type P5 from "p5";
 import { inToMm } from "ywnrtza/src/common/utils";
@@ -183,24 +187,14 @@ export async function drawBasicClockPageP5(
   ctx: ZineContext,
   pageCtx: PageContext,
 ) {
-  const {
-    outPdf,
-    outW,
-    outH,
-    outHMm,
-    outWMm,
-    resolution,
-    clockParams,
-    p,
-    sketchHooks,
-  } = ctx;
-  const clock = await randomClock(clockParams);
-  const mmToPx = (mm: number) => mm * inToMm(resolution);
-
-  const pg = p.createGraphics(mmToPx(outWMm), mmToPx(outHMm));
+  const { clockParams, p, sketchHooks } = ctx;
+  const { setupPage, renderToPage } = getP5PageHelpers(ctx);
+  const { pg, mmToPx } = setupPage();
   pg.background(255);
+  const p5Ctx: P5ComponentContext = { pg, hooks: sketchHooks };
 
   // clock image
+  const clock = await randomClock(clockParams);
   const clockImgDataUrl = URL.createObjectURL(clock.clockBlob);
   const clockImg = await p.loadImage(clockImgDataUrl);
   URL.revokeObjectURL(clockImgDataUrl);
@@ -212,43 +206,33 @@ export async function drawBasicClockPageP5(
   ] as const;
   pg.image(clockImg, ...clockRect);
 
-  // text str
-  const str = to3LineDateString(clock.date);
-  const textSize = mmToPx(ptsToMm(9));
-  pg.textFont(sketchHooks.fonts.geistPixelSquare);
-  pg.textSize(textSize);
-  pg.textLeading(textSize);
-  pg.textAlign("center", "top");
-  const textBounds = pg.textBounds(str, 0, 0);
-  const textPos = [
-    pg.width / 2,
-    clockRect[1] + clockRect[3] + textSize,
-  ] as const;
-  pg.fill(0);
-  pg.text(str, ...textPos);
+  const GAP = mmToPx(ptsToMm(DATE_TEXT_SIZE_PTS)) * 0.8;
+  await threeLineDateWithQrInline(p5Ctx, ctx, {
+    x: pg.width / 2,
+    y: clockRect[1] + clockRect[3] + GAP,
+    clock,
+  });
 
-  // Qr code
-  const GAP = textSize * 0.5; // gap between text box and QR
-  const qrImgDataUrl = URL.createObjectURL(clock.qrCodeBlob);
-  const qrImg = await p.loadImage(qrImgDataUrl);
-  URL.revokeObjectURL(qrImgDataUrl);
-  const QR_SIZE = mmToPx(10);
-  pg.image(
-    qrImg,
-    pg.width / 2 - QR_SIZE / 2,
-    textPos[1] + textBounds.h + GAP,
-    QR_SIZE,
-    QR_SIZE,
-  );
+  await renderToPage(pageCtx, pg);
+}
 
-  // render the canvas into the PDF
-  const { page } = pageCtx;
-  const renderedPage = await canvasToBlob(pg.elt).then((blob) =>
-    blob.arrayBuffer(),
-  );
-  const renderedPageImg = await outPdf.embedPng(renderedPage);
-  page.drawImage(renderedPageImg, { x: 0, y: 0, width: outW, height: outH });
-  footer(page, ctx, pageCtx);
+export async function drawDoubleClockPage(
+  ctx: ZineContext,
+  pageCtx: PageContext,
+) {
+  //
+}
 
-  pg.remove();
+export async function drawQuadClockPage(
+  ctx: ZineContext,
+  pageCtx: PageContext,
+) {
+  //
+}
+
+export async function drawClockAsClockPage(
+  ctx: ZineContext,
+  pageCtx: PageContext,
+) {
+  //
 }

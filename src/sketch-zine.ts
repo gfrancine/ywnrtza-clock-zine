@@ -116,7 +116,7 @@ async function generateZine(p: P5) {
   // add pages, part 1
   console.log("drawing front cover");
   drawPromises.push(drawFrontCover(newPageCtx()));
-  drawClockPages(6);
+  drawClockPages(2);
 
   // middle: instruction help pages
   console.log("drawing instruction pages");
@@ -127,7 +127,7 @@ async function generateZine(p: P5) {
   drawPromises.push(drawEssayPage(zineCtx, newPageCtx()));
   pageNumber++;
 
-  drawClockPages(6 - 1);
+  drawClockPages(2 - 1);
   console.log("drawing back cover");
   drawPromises.push(drawBackCover(newPageCtx()));
 
