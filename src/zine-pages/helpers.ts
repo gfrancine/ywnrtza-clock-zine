@@ -53,7 +53,7 @@ export async function randomClock({
   baseDate,
 }: RandomClockParams): Promise<RandomClockResult> {
   const preset = { ...randomClockPreset(), ...clockPreset };
-  baseDate = baseDate || randomDate();
+  baseDate = baseDate || randomDate(new Date("mar 1 2006")); // how do i make this about me?
 
   // clock
   const width = inToMm(resolution) * clockSizeMm, // size mm * 300ppi
