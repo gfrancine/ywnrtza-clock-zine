@@ -13,10 +13,12 @@ import {
   getPdfDrawingHelpers,
   to2LineDateString,
   type RandomClockParams,
+  to3LineDateString,
 } from "./helpers";
-import { oneLineDateStr } from "./components";
+import { footer, oneLineDateStr } from "./components";
+import type { LeftOrRight } from "ywnrtza/src/common/types";
 
-export type PageContext = {
+export type ZineContext = {
   outPdf: PDFDocument;
   outW: number;
   outH: number;
@@ -25,8 +27,13 @@ export type PageContext = {
   font: PDFFont;
 };
 
+export type PageContext = {
+  pageNumber: number;
+  position: LeftOrRight;
+};
+
 /** cover pages + help pages */
-export async function mainPages(ctx: PageContext) {
+export async function mainPages(ctx: ZineContext) {
   const { outPdf, outW, outH, designedPages, clockParams, font } = ctx;
   const { fullPageRect, whiteRectMm, fromTop, drawImageMm } =
     getPdfDrawingHelpers({ outW, outH });
@@ -98,7 +105,7 @@ export async function mainPages(ctx: PageContext) {
   return { drawFrontCover, drawBackCover, drawHelpPage1, drawHelpPage2 };
 }
 
-export async function drawEssayPage(ctx: PageContext) {
+export async function drawEssayPage(ctx: ZineContext) {
   const { outPdf, outW, outH, designedPages, clockParams } = ctx;
   const { drawImageMm, whiteRectMm } = getPdfDrawingHelpers({ outW, outH });
 
@@ -116,4 +123,53 @@ export async function drawEssayPage(ctx: PageContext) {
   drawOneLineDateText(page, 2);
 
   drawImageMm(page, clockImage, 3, 7.5, 64, 45);
+}
+
+export async function drawSimpleClockPage(
+  ctx: ZineContext,
+  pageCtx: PageContext,
+) {
+  const { outPdf, outW, outH, designedPages, clockParams, font } = ctx;
+  const { fullPageRect, whiteRectMm, fromTop, drawImageMm } =
+    getPdfDrawingHelpers({ outW, outH });
+
+  const clock = await randomClock(clockParams);
+  const clockImage = await outPdf.embedPng(await clock.clockBlob.arrayBuffer());
+  const qrImage = await outPdf.embedPng(await clock.qrCodeBlob.arrayBuffer());
+
+  const page = outPdf.addPage([outW, outH]);
+
+  // clock
+  page.drawImage(clockImage, {
+    x: mmToPts(3),
+    y: fromTop(mmToPts(3), mmToPts(80)),
+    width: mmToPts(64),
+    height: mmToPts(80),
+  });
+
+  // text + QR
+  const fontInfo = {
+    font,
+    size: 9,
+    leading: 9,
+  };
+  const str = to3LineDateString(clock.date);
+  const textBounds = getAlignedTextSize(str, fontInfo);
+  drawAlignedText(page, str, {
+    ...fontInfo,
+    align: "center",
+    x: mmToPts(35),
+    y: fromTop(mmToPts(85), textBounds.h),
+  });
+
+  drawImageMm(page, qrImage, 30, 96, 10, 10);
+
+  // footer
+  footer(page, ctx, pageCtx);
+}
+
+export async function drawSampleP5Page(ctx: ZineContext, pageCtx: PageContext) {
+  const { outPdf, outW, outH, designedPages, clockParams, font } = ctx;
+  const { fullPageRect, whiteRectMm, fromTop, drawImageMm } =
+    getPdfDrawingHelpers({ outW, outH });
 }

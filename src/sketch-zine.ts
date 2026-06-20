@@ -1,5 +1,5 @@
 import P5 from "p5";
-import type { PageSketchHooks } from "ywnrtza/src/common/types";
+import type { LeftOrRight, PageSketchHooks } from "ywnrtza/src/common/types";
 import {
   CachedAssetLoader,
   loadCommonFonts,
@@ -10,7 +10,12 @@ import { getColors } from "ywnrtza/src/common/colors";
 import { PDFDocument } from "pdf-lib";
 import fontkit from "@pdf-lib/fontkit";
 import { mmToPts } from "./utils";
-import { drawEssayPage, mainPages, type PageContext } from "./zine-pages";
+import {
+  drawEssayPage,
+  drawSimpleClockPage,
+  mainPages,
+  type ZineContext,
+} from "./zine-pages";
 
 // main
 
@@ -58,7 +63,7 @@ async function generateZine(p: P5) {
   const fontBuffer = await fetch(FONT_PATH).then((res) => res.arrayBuffer());
   const font = await outPdf.embedFont(fontBuffer);
 
-  const pageCtx: PageContext = {
+  const zineCtx: ZineContext = {
     outPdf,
     outW: OUT_W,
     outH: OUT_H,
@@ -67,21 +72,43 @@ async function generateZine(p: P5) {
     font,
   };
 
+  // page generation
   console.log("generating pages");
+
+  let pageNumber = 1;
+  const getPageCtx = () => ({
+    pageNumber,
+    position: pageNumber % 2 === 0 ? "right" : ("left" as LeftOrRight),
+  });
+
   const { drawFrontCover, drawBackCover, drawHelpPage1, drawHelpPage2 } =
-    await mainPages(pageCtx);
+    await mainPages(zineCtx);
 
   // add pages, part 1
   await drawFrontCover();
-  // ... TODO
+
+  for (let i = 0; i < 6; i++) {
+    console.log("generating page " + pageNumber);
+    await drawSimpleClockPage(zineCtx, getPageCtx());
+    // ... TODO
+    pageNumber++;
+  }
 
   // middle: instruction help pages
   await drawHelpPage1();
   await drawHelpPage2();
+  pageNumber += 2;
 
   // add pages, part 2
-  await drawEssayPage(pageCtx);
-  // ... TODO
+  await drawEssayPage(zineCtx);
+  pageNumber++;
+
+  for (let i = 0; i < 6 - 1; i++) {
+    console.log("generating page " + pageNumber);
+    await drawSimpleClockPage(zineCtx, getPageCtx());
+    // ... TODO
+    pageNumber++;
+  }
 
   await drawBackCover();
 
