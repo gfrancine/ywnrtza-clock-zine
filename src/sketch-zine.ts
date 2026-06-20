@@ -19,7 +19,11 @@ import {
   drawClockAsClockPage,
 } from "./zine-pages";
 import type { PageContext, ZineContext } from "./zine-pages/types";
-import { assert, randomFromArray } from "ywnrtza/src/common/utils";
+import {
+  assert,
+  randomFromArrayWeighted,
+  type WeightedArray,
+} from "ywnrtza/src/common/utils";
 
 /** replaces generatePages() for previewing pages in development */
 async function previewPageDevelopment(zineCtx: ZineContext) {
@@ -64,13 +68,13 @@ async function generatePages(zineCtx: ZineContext) {
       console.log("generating page " + pageNumber);
       const pageCtx = newPageCtx();
 
-      const presets = [
-        () => drawBasicClockPageP5(zineCtx, pageCtx),
-        () => drawDoubleClockPage(zineCtx, pageCtx),
-        () => drawQuadClockPage(zineCtx, pageCtx),
-        () => drawClockAsClockPage(zineCtx, pageCtx),
+      const presets: WeightedArray<() => Promise<void>> = [
+        [() => drawBasicClockPageP5(zineCtx, pageCtx), 4],
+        [() => drawDoubleClockPage(zineCtx, pageCtx), 4],
+        [() => drawQuadClockPage(zineCtx, pageCtx), 2],
+        [() => drawClockAsClockPage(zineCtx, pageCtx), 1],
       ];
-      const preset = randomFromArray(presets);
+      const preset = randomFromArrayWeighted(presets);
 
       drawPromises.push(preset());
       pageNumber++;
