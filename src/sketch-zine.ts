@@ -9,7 +9,7 @@ import { loadRawTexts } from "ywnrtza/src/text";
 import { getColors } from "ywnrtza/src/common/colors";
 import { PDFDocument } from "pdf-lib";
 import fontkit from "@pdf-lib/fontkit";
-import { mmToPts } from "./utils";
+import { downloadFileFromUrl, mmToPts } from "./utils";
 import {
   drawEssayPage,
   drawBasicClockPageP5,
@@ -25,7 +25,26 @@ import {
   type WeightedArray,
 } from "ywnrtza/src/common/utils";
 
-/** replaces generatePages() for previewing pages in development */
+/**
+ * when true, runs previewPageDevelopment instead of generatePages
+ * and outputs to an iframe instead of downloading.
+ */
+const IS_PREVIEW_DEV_MODE = false;
+const N_ZINES = 3; // how many pdfs/zines to generate at once
+const OUT_W_MM = 70,
+  OUT_H_MM = 200,
+  OUT_W = mmToPts(OUT_W_MM),
+  OUT_H = mmToPts(OUT_H_MM);
+const CLOCK_SIZE_MM = 150; // default size of a clock image PNG
+const RESOLUTION = 300; // ppi
+const BASE_URL = "https://gfrancine.gitlab.io/ywnrtza-clock";
+const DESIGNED_PDF_PATH = "clock-assets/designedpages.pdf";
+const FONT_PATH = "assets/fonts/GeistPixel-Square.otf";
+
+/**
+ * replaces generatePages() for previewing pages in development or benchmarking.
+ * Use by enabling the IS_PREVIEW_DEV_MODE constant above
+ */
 async function previewPageDevelopment(zineCtx: ZineContext) {
   const { outPdf, outW, outH } = zineCtx;
 
@@ -38,14 +57,17 @@ async function previewPageDevelopment(zineCtx: ZineContext) {
     position: "left",
   };
 
+  // change this line !
   await drawClockAsClockPage(zineCtx, pageCtx);
+  // --------
 
   console.log(`done! took ${Math.round(performance.now() - startTime)}ms`);
 }
 
+/** page generation */
 async function generatePages(zineCtx: ZineContext) {
   const { outPdf, outW, outH } = zineCtx;
-  console.log("generating pages");
+  // console.log("generating pages");
 
   const startTime = performance.now();
   const drawPromises = []; // generate pages in parallel
@@ -65,7 +87,6 @@ async function generatePages(zineCtx: ZineContext) {
 
   const drawClockPages = (length: number) => {
     for (let i = 0; i < length; i++) {
-      console.log("generating page " + pageNumber);
       const pageCtx = newPageCtx();
 
       const presets: WeightedArray<() => Promise<void>> = [
@@ -76,7 +97,11 @@ async function generatePages(zineCtx: ZineContext) {
       ];
       const preset = randomFromArrayWeighted(presets);
 
-      drawPromises.push(preset());
+      drawPromises.push(
+        preset().then(() =>
+          console.log(`page ${pageCtx.pageNumber}/${N_CLOCK_PAGES + 4} done`),
+        ),
+      );
       pageNumber++;
     }
   };
@@ -85,12 +110,10 @@ async function generatePages(zineCtx: ZineContext) {
     await mainPages(zineCtx);
 
   // add pages, part 1
-  console.log("drawing front cover");
   drawPromises.push(drawFrontCover(newPageCtx()));
   drawClockPages(N_CLOCK_PAGES / 2);
 
   // middle: instruction help pages
-  console.log("drawing instruction pages");
   drawPromises.push(drawHelpPage1(newPageCtx()), drawHelpPage2(newPageCtx()));
   pageNumber += 2;
 
@@ -99,44 +122,17 @@ async function generatePages(zineCtx: ZineContext) {
   pageNumber++;
 
   drawClockPages(N_CLOCK_PAGES / 2 - 1);
-  console.log("drawing back cover");
   drawPromises.push(drawBackCover(newPageCtx()));
 
   await Promise.all(drawPromises);
   console.log(
-    `page generation done! took took ${Math.round(performance.now() - startTime)}ms`,
+    `pages generated! took ${Math.round(performance.now() - startTime)}ms`,
   );
 }
 
-async function generateZine(p: P5) {
-  const OUT_W_MM = 70,
-    OUT_H_MM = 200,
-    OUT_W = mmToPts(OUT_W_MM),
-    OUT_H = mmToPts(OUT_H_MM);
-  const CLOCK_SIZE_MM = 150;
-  const RESOLUTION = 300;
-  const BASE_URL = "https://gfrancine.gitlab.io/ywnrtza-clock";
-  const DESIGNED_PDF_PATH = "clock-assets/designedpages.pdf";
-  const FONT_PATH = "assets/fonts/GeistPixel-Square.otf";
-
-  const previewFrame = document.getElementById(
-    "zine-pdf-preview",
-  ) as HTMLIFrameElement;
-  previewFrame.classList.add("visible");
-
-  const assetLoader = new CachedAssetLoader(p);
-  const hooks: PageSketchHooks = {
-    colors: getColors(p),
-    fonts: await loadCommonFonts(p),
-    images: await loadCommonImages(p),
-    rawTexts: await loadRawTexts(),
-    ...assetLoader.getSketchHooks(),
-  };
-
-  // PDF Generation
-  // --------
-
-  console.log("Generating PDF");
+/** Generate a full zine. Returns a data URL of the output PDF */
+async function generateZine(p: P5, hooks: PageSketchHooks) {
+  console.log("generating pdf");
   const startTime = performance.now();
   const outPdf = await PDFDocument.create();
   outPdf.registerFontkit(fontkit);
@@ -176,9 +172,8 @@ async function generateZine(p: P5) {
   };
 
   // page generation
-
-  // await previewPageDevelopment(zineCtx);
-  await generatePages(zineCtx);
+  if (IS_PREVIEW_DEV_MODE) await previewPageDevelopment(zineCtx);
+  else await generatePages(zineCtx);
 
   // save PDF
   // https://github.com/gfrancine/f-impose/blob/master/src/utils.ts
@@ -188,20 +183,61 @@ async function generateZine(p: P5) {
     type: "application/pdf",
   });
   const outPdfUrl = URL.createObjectURL(outPdfBlob);
-  // await downloadFileFromUrl(outPdfUrl, "output.pdf");
-  previewFrame.src = outPdfUrl;
-  console.log(`done! took ${Math.round(performance.now() - startTime)}ms`);
+  console.log(
+    `pdf generated! took ${Math.round(performance.now() - startTime)}ms`,
+  );
+  return outPdfUrl;
 }
 
 function sketch(p: P5) {
   console.log("press the 'S' key to generate the zine!");
 
-  // p.setup = async () => {
-  //    p.noSmooth();
-  // };
-
   p.keyPressed = async () => {
-    if (p.key === "s") await generateZine(p);
+    if (p.key !== "s") return;
+
+    const assetLoader = new CachedAssetLoader(p);
+    const hooks: PageSketchHooks = {
+      colors: getColors(p),
+      fonts: await loadCommonFonts(p),
+      images: await loadCommonImages(p),
+      rawTexts: await loadRawTexts(),
+      ...assetLoader.getSketchHooks(),
+    };
+
+    // zine generation
+    console.log("generating pdfs");
+    const nZines = IS_PREVIEW_DEV_MODE ? 1 : N_ZINES;
+    const startTime = performance.now();
+    const outPdfUrls: string[] = [];
+    const promises = [];
+    for (let i = 0; i < nZines; i++) {
+      promises.push(
+        generateZine(p, hooks).then((outPdfUrl) => {
+          outPdfUrls.push(outPdfUrl);
+          console.log(`pdf ${i + 1}/${nZines} generated!`);
+        }),
+      );
+    }
+    await Promise.all(promises);
+
+    // download or preview the output(s)
+    if (IS_PREVIEW_DEV_MODE) {
+      const previewFrame = document.getElementById(
+        "zine-pdf-preview",
+      ) as HTMLIFrameElement;
+      previewFrame.classList.add("visible");
+      previewFrame.src = outPdfUrls[0];
+    } else {
+      await Promise.all(
+        outPdfUrls.map((url, i) =>
+          downloadFileFromUrl(url, "output-" + (i + 1) + ".pdf"),
+        ),
+      );
+    }
+
+    console.log(
+      `pdfs generated! took ${Math.round(performance.now() - startTime)}ms`,
+    );
   };
 }
 
