@@ -15,6 +15,8 @@ import {
 import { clockPresetFromUrlSearch, clockPresetToUrl } from "./url";
 
 function sketch(p: P5) {
+  document.getElementById("zine-gen-container")?.remove();
+
   const loadingText = document.getElementById("loading-text") as HTMLElement;
   const container = document.getElementById("sketch-container") as HTMLElement;
   const timeDisplay = document.getElementById("time-display") as HTMLElement;

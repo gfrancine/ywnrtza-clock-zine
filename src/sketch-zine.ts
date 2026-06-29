@@ -30,7 +30,7 @@ import {
  * and outputs to an iframe instead of downloading.
  */
 const IS_PREVIEW_DEV_MODE = false;
-const N_ZINES = 3; // how many pdfs/zines to generate at once
+// const N_CLOCK_PAGES = 16 - 4; // -4 help pages + covers
 const OUT_W_MM = 70,
   OUT_H_MM = 200,
   OUT_W = mmToPts(OUT_W_MM),
@@ -66,7 +66,8 @@ async function previewPageDevelopment(zineCtx: ZineContext) {
 
 /** page generation */
 async function generatePages(zineCtx: ZineContext) {
-  const { outPdf, outW, outH } = zineCtx;
+  const { outPdf, outW, outH, nPages } = zineCtx;
+  const nClockPages = nPages - 4;
   // console.log("generating pages");
 
   const startTime = performance.now();
@@ -82,8 +83,7 @@ async function generatePages(zineCtx: ZineContext) {
     position: pageNumber % 2 === 0 ? "right" : ("left" as LeftOrRight),
   });
 
-  const N_CLOCK_PAGES = 24 - 4; // -4 help pages + covers
-  assert(N_CLOCK_PAGES % 2 === 0, "number of clock pages must be even");
+  assert(nClockPages % 2 === 0, "number of clock pages must be even");
 
   const drawClockPages = (length: number) => {
     for (let i = 0; i < length; i++) {
@@ -99,7 +99,7 @@ async function generatePages(zineCtx: ZineContext) {
 
       drawPromises.push(
         preset().then(() =>
-          console.log(`page ${pageCtx.pageNumber}/${N_CLOCK_PAGES + 4} done`),
+          console.log(`page ${pageCtx.pageNumber}/${nClockPages + 4} done`),
         ),
       );
       pageNumber++;
@@ -111,7 +111,7 @@ async function generatePages(zineCtx: ZineContext) {
 
   // add pages, part 1
   drawPromises.push(drawFrontCover(newPageCtx()));
-  drawClockPages(N_CLOCK_PAGES / 2);
+  drawClockPages(nClockPages / 2);
 
   // middle: instruction help pages
   drawPromises.push(drawHelpPage1(newPageCtx()), drawHelpPage2(newPageCtx()));
@@ -121,7 +121,7 @@ async function generatePages(zineCtx: ZineContext) {
   drawPromises.push(drawEssayPage(zineCtx, newPageCtx()));
   pageNumber++;
 
-  drawClockPages(N_CLOCK_PAGES / 2 - 1);
+  drawClockPages(nClockPages / 2 - 1);
   drawPromises.push(drawBackCover(newPageCtx()));
 
   await Promise.all(drawPromises);
@@ -131,7 +131,7 @@ async function generatePages(zineCtx: ZineContext) {
 }
 
 /** Generate a full zine. Returns a data URL of the output PDF */
-async function generateZine(p: P5, hooks: PageSketchHooks) {
+async function generateZine(nPages: number, p: P5, hooks: PageSketchHooks) {
   console.log("generating pdf");
   const startTime = performance.now();
   const outPdf = await PDFDocument.create();
@@ -169,6 +169,7 @@ async function generateZine(p: P5, hooks: PageSketchHooks) {
     font,
     p,
     sketchHooks: hooks,
+    nPages,
   };
 
   // page generation
@@ -190,10 +191,26 @@ async function generateZine(p: P5, hooks: PageSketchHooks) {
 }
 
 function sketch(p: P5) {
-  console.log("press the 'S' key to generate the zine!");
+  const container = document.getElementById(
+    "zine-gen-container",
+  ) as HTMLElement;
+  const nZinesInput = document.getElementById("n-zines") as HTMLInputElement;
+  const nPagesInput = document.getElementById("n-pages") as HTMLInputElement;
+  const filePrefixInput = document.getElementById(
+    "file-prefix",
+  ) as HTMLInputElement;
+  const generateButton = document.getElementById(
+    "generate-zines",
+  ) as HTMLButtonElement;
 
-  p.keyPressed = async () => {
-    if (p.key !== "s") return;
+  const onGenerateZines = async () => {
+    const nZines = IS_PREVIEW_DEV_MODE ? 1 : Number(nZinesInput.value);
+    const nPages = Number(nPagesInput.value);
+    const filePrefix = filePrefixInput.value;
+    console.log({ nZines, nPages, filePrefix });
+    assert(nZines >= 1, "nZines must be greater than or equal to 1");
+    assert(nPages % 4 === 0, "nPages must be divisible by 4");
+    assert(nPages >= 4, "nZines must be greater than or equal to 4");
 
     const assetLoader = new CachedAssetLoader(p);
     const hooks: PageSketchHooks = {
@@ -206,13 +223,12 @@ function sketch(p: P5) {
 
     // zine generation
     console.log("generating pdfs");
-    const nZines = IS_PREVIEW_DEV_MODE ? 1 : N_ZINES;
     const startTime = performance.now();
     const outPdfUrls: string[] = [];
     const promises = [];
     for (let i = 0; i < nZines; i++) {
       promises.push(
-        generateZine(p, hooks).then((outPdfUrl) => {
+        generateZine(nPages, p, hooks).then((outPdfUrl) => {
           outPdfUrls.push(outPdfUrl);
           console.log(`pdf ${i + 1}/${nZines} generated!`);
         }),
@@ -225,12 +241,12 @@ function sketch(p: P5) {
       const previewFrame = document.getElementById(
         "zine-pdf-preview",
       ) as HTMLIFrameElement;
-      previewFrame.classList.add("visible");
+      previewFrame.classList.remove("hidden");
       previewFrame.src = outPdfUrls[0];
     } else {
       await Promise.all(
         outPdfUrls.map((url, i) =>
-          downloadFileFromUrl(url, "output-" + (i + 1) + ".pdf"),
+          downloadFileFromUrl(url, filePrefix + "output-" + (i + 1) + ".pdf"),
         ),
       );
     }
@@ -239,6 +255,16 @@ function sketch(p: P5) {
       `pdfs generated! took ${Math.round(performance.now() - startTime)}ms`,
     );
   };
+
+  p.setup = () => {
+    container.classList.remove("hidden");
+    generateButton.addEventListener("click", onGenerateZines);
+  };
+
+  // p.keyPressed = async () => {
+  //   if (p.key !== "s") return;
+  //   onGenerateZines();
+  // };
 }
 
 export default sketch;

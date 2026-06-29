@@ -19,6 +19,7 @@ export type ZineContext = {
   font: PDFFont;
   p: P5;
   sketchHooks: PageSketchHooks;
+  nPages: number;
 };
 
 export type PageContext = {

@@ -45,13 +45,16 @@ a {
   left: 0px;
 }
 
-#zine-pdf-preview {
+#zine-gen-container.hidden {
   display: none;
 }
-#zine-pdf-preview.visible {
-  display: block;
+
+#zine-pdf-preview {
   width: 100%;
   height: 100%;
+}
+#zine-pdf-preview.hidden {
+  display: none;
 }
 
 footer {

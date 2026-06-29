@@ -12,7 +12,19 @@
       <main id="sketch-container">
         <p id="loading-text"></p>
         <!-- used by the zine imposition sketch -->
-        <iframe id="zine-pdf-preview"></iframe>
+        <div id="zine-gen-container" class="hidden">
+          <p>Open the console to see the full log!</p>
+          <label for="n-zines"
+            ># Zines <input type="number" id="n-zines" value="3"
+          /></label>
+          <label for="n-pages"
+            ># Pages <input type="number" id="n-pages" value="16"
+          /></label>
+          <label for="file-prefix">Prefix <input id="file-prefix" /></label>
+          <button id="generate-zines">Generate!</button>
+          <iframe id="zine-pdf-preview" class="hidden"></iframe>
+          <p></p>
+        </div>
       </main>
       <footer id="footer">
         <p>
